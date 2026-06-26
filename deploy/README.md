@@ -15,6 +15,25 @@ official **OpenWebRX+ apt repository**, which `apt` pulls in automatically.
 | **RTL-SDR** | Automatic — `owrx-connector` (a hard dependency) provides the driver. The installer also blacklists the DVB kernel module. |
 | **SDRplay (RSP)** | Needs `--sdrplay`. The proprietary SDRplay API **cannot be redistributed**, so the installer downloads it from SDRplay's official site at install time (pinned to v3.15.2) and installs the `soapysdr-module-sdrplay3` bridge from the repo. |
 
+## Digital voice (D-Star / DMR / YSF / NXDN)
+
+These modes use the AMBE voice codec, so they need a CodecServer with AMBE
+support. Two options:
+
+- **Software (mbelib)** — `--softmbe`. No extra hardware. Runs the OpenWebRX+
+  project's official `install-softmbe.sh`, which builds `mbelib` and
+  `codecserver-softmbe` from source and wires them into CodecServer.
+  > ⚠️ **Patent risk:** mbelib is an unlicensed codec implementation of
+  > questionable origin; decoding AMBE/IMBE in software this way may be
+  > interpreted as a patent violation. `--softmbe` requires you to accept this
+  > (interactively, or with `--accept-softmbe-patent-risk`).
+- **Hardware dongle** — `--ambe-device /dev/ttyUSB0` (optionally `--ambe-baud`).
+  Installs `codecserver` + `codecserver-driver-ambe3k` and configures CodecServer
+  to use an AMBE dongle (ThumbDV, DVstick30, …). No patent concern.
+
+Pick one. Either way, leave OpenWebRX's **Settings → Decoding → Digital voice →
+Codecserver address** empty (it talks to the local CodecServer by default).
+
 ## 1. Build the package
 
 On any Ubuntu/Debian box (or one of the servers):
@@ -46,6 +65,9 @@ sudo ./install.sh --deb-url https://github.com/WW2DX/openwebrx/releases/download
 # ...and add SDRplay support (downloads the API from sdrplay.com, EULA required):
 sudo ./install.sh --deb ./openwebrx_*.deb --sdrplay --accept-sdrplay-eula
 
+# ...with software digital-voice (D-Star/DMR/YSF/NXDN via mbelib - patent risk):
+sudo ./install.sh --deb ./openwebrx_*.deb --softmbe --accept-softmbe-patent-risk
+
 # auto-create the web admin user in the same run:
 sudo OWRX_ADMIN_PASSWORD='choose-a-password' ./install.sh --deb ./openwebrx_*.deb
 ```
@@ -56,10 +78,15 @@ When it finishes, OpenWebRX is live at `http://<server-ip>:8073/`.
 - `--deb FILE` / `--deb-url URL` — install your fork's package (omit both to install the stock repo package).
 - `--sdrplay` — also install the SDRplay RSP API + Soapy module.
 - `--accept-sdrplay-eula` — accept SDRplay's license non-interactively (otherwise you're prompted).
+- `--softmbe` — software digital voice via mbelib (patent risk; see above).
+- `--accept-softmbe-patent-risk` — accept the mbelib patent risk non-interactively.
+- `--ambe-device DEV` / `--ambe-baud BAUD` — hardware AMBE dongle instead of `--softmbe`.
 - `OWRX_ADMIN_PASSWORD=...` — auto-create the `admin` web user.
 - `SDRPLAY_VERSION` / `SDRPLAY_URL` / `SDRPLAY_SHA256` — override the SDRplay download (default 3.15.2). On the first run the script prints the downloaded file's SHA-256; set `SDRPLAY_SHA256` to that value on later runs to pin integrity.
 
 ## 3. Post-install
+- Check which modes/decoders are available (digital voice highlighted):
+  `sudo deploy/check-features.sh` — `install.sh` runs this automatically at the end.
 - Create the web admin (if you didn't preseed it): `sudo openwebrx admin adduser admin`
 - Set the receiver position so Slack spot **distance/azimuth** are correct:
   Settings → General settings → Receiver location.

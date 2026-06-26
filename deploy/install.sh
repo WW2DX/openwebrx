@@ -9,7 +9,8 @@
 #   2. install the fork's openwebrx .deb (your code), with apt resolving deps,
 #   3. set up RTL-SDR (blacklist the DVB kernel driver),
 #   4. optionally install the SDRplay RSP API + Soapy module (--sdrplay),
-#   5. enable and start the openwebrx systemd service.
+#   5. optionally set up CodecServer + AMBE for digital voice (--ambe-device),
+#   6. enable and start the openwebrx systemd service, then print a feature report.
 #
 # RTL-SDR works with no extra flags. SDRplay needs --sdrplay because its API is
 # proprietary: this script DOWNLOADS it from SDRplay's official site at install
@@ -26,6 +27,18 @@
 #   (omit both to install the stock 'openwebrx' package from the repo instead)
 #   --sdrplay                also install the SDRplay RSP API + Soapy module
 #   --accept-sdrplay-eula    accept SDRplay's license non-interactively
+#   --ambe-device DEV        configure CodecServer for a hardware AMBE dongle on
+#                            serial port DEV (e.g. /dev/ttyUSB0) so D-Star/DMR/
+#                            YSF/NXDN decode. Requires an AMBE dongle (ThumbDV,
+#                            DVstick30, etc.); AMBE cannot be done in software here.
+#   --ambe-baud BAUD         AMBE dongle baud rate (default 921600)
+#   --softmbe                set up SOFTWARE AMBE/IMBE via mbelib instead of a
+#                            dongle, so D-Star/DMR/YSF/NXDN decode with no extra
+#                            hardware. PATENT RISK: mbelib is an unlicensed codec
+#                            of questionable origin; using it may be a patent
+#                            violation. Runs the OpenWebRX+ project's official
+#                            install-softmbe.sh.
+#   --accept-softmbe-patent-risk  accept the mbelib patent risk non-interactively
 #   -h, --help               show this help
 #
 # Environment overrides:
@@ -36,11 +49,18 @@
 #
 set -euo pipefail
 
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ---- defaults ---------------------------------------------------------------
 DEB_FILE=""
 DEB_URL=""
 WITH_SDRPLAY=0
 ACCEPT_SDRPLAY_EULA=0
+AMBE_DEVICE=""
+AMBE_BAUD="921600"
+WITH_SOFTMBE=0
+ACCEPT_SOFTMBE=0
+SOFTMBE_URL="${SOFTMBE_URL:-https://fms.komkon.org/OWRX/install-softmbe.sh}"
 SDRPLAY_VERSION="${SDRPLAY_VERSION:-3.15.2}"
 SDRPLAY_URL="${SDRPLAY_URL:-https://www.sdrplay.com/software/SDRplay_RSP_API-Linux-${SDRPLAY_VERSION}.run}"
 SDRPLAY_SHA256="${SDRPLAY_SHA256:-}"
@@ -57,7 +77,11 @@ while [ $# -gt 0 ]; do
         --deb-url)             DEB_URL="${2:?--deb-url needs a URL}"; shift 2 ;;
         --sdrplay)             WITH_SDRPLAY=1; shift ;;
         --accept-sdrplay-eula) ACCEPT_SDRPLAY_EULA=1; shift ;;
-        -h|--help)             sed -n '2,40p' "$0"; exit 0 ;;
+        --ambe-device)         AMBE_DEVICE="${2:?--ambe-device needs a serial port}"; shift 2 ;;
+        --ambe-baud)           AMBE_BAUD="${2:?--ambe-baud needs a value}"; shift 2 ;;
+        --softmbe)             WITH_SOFTMBE=1; shift ;;
+        --accept-softmbe-patent-risk) ACCEPT_SOFTMBE=1; shift ;;
+        -h|--help)             sed -n '2,56p' "$0"; exit 0 ;;
         *) die "unknown option: $1 (try --help)" ;;
     esac
 done
@@ -197,6 +221,80 @@ EOF
         warn "soapysdr-module-sdrplay3 not available from the configured repos; install it manually."
 fi
 
+# ---- 5b. CodecServer + AMBE for digital voice (optional) --------------------
+if [ -n "${AMBE_DEVICE}" ]; then
+    log "Setting up CodecServer + AMBE (digital voice) for dongle on ${AMBE_DEVICE}..."
+    # codecserver + the ambe3k hardware driver + the digiham decoder bindings
+    apt-get install -y codecserver codecserver-driver-ambe3k python3-digiham
+
+    cfg=/etc/codecserver/codecserver.conf
+    [ -f "${cfg}" ] || cfg=/usr/local/etc/codecserver/codecserver.conf
+    if [ ! -f "${cfg}" ]; then
+        warn "CodecServer config not found; creating ${cfg}"
+        mkdir -p "$(dirname "${cfg}")"
+        printf '%s\n' '[server:unixdomainsockets]' > "${cfg}"
+    fi
+
+    if grep -q "driver=ambe3k" "${cfg}"; then
+        log "An ambe3k device is already configured in ${cfg}; leaving it as-is."
+    else
+        log "Adding ambe3k device (${AMBE_DEVICE} @ ${AMBE_BAUD}) to ${cfg}..."
+        cat >>"${cfg}" <<EOF
+
+# Added by openwebrx deploy/install.sh - hardware AMBE dongle
+[device:dv3k]
+driver=ambe3k
+tty=${AMBE_DEVICE}
+baudrate=${AMBE_BAUD}
+EOF
+    fi
+
+    # serial access for codecserver, and socket access for openwebrx
+    usermod -aG dialout codecserver 2>/dev/null || true
+    if getent group codecserver >/dev/null 2>&1; then
+        usermod -aG codecserver openwebrx 2>/dev/null || true
+    fi
+
+    systemctl enable --now codecserver 2>/dev/null \
+        || warn "could not enable codecserver via systemd; start it manually."
+    systemctl restart codecserver 2>/dev/null || true
+fi
+
+# ---- 5c. Software MBE (mbelib) for digital voice (optional) -----------------
+if [ "${WITH_SOFTMBE}" -eq 1 ]; then
+    log "Setting up SOFTWARE MBE (mbelib) for digital voice..."
+    echo
+    echo "  ============================ PATENT NOTICE ============================"
+    echo "  Software MBE uses an unlicensed mbelib implementation of questionable"
+    echo "  origin. Decoding AMBE/IMBE digital voice in software this way MAY be"
+    echo "  interpreted as a patent violation in your jurisdiction. You are"
+    echo "  installing it at your own risk and responsibility."
+    echo
+    echo "  This runs the OpenWebRX+ project's official installer (builds mbelib"
+    echo "  and codecserver-softmbe from source):"
+    echo "      ${SOFTMBE_URL}"
+    echo "  ======================================================================"
+    echo
+    if [ "${ACCEPT_SOFTMBE}" -ne 1 ]; then
+        read -r -p "  Accept the patent risk and install software MBE? [y/N] " reply
+        case "${reply}" in [yY]|[yY][eE][sS]) ;; *) die "Software MBE install declined." ;; esac
+    fi
+
+    # codecserver runtime + dev headers + digiham bindings are prerequisites
+    apt-get install -y codecserver libcodecserver-dev python3-digiham
+
+    softmbe_dir="$(mktemp -d)"
+    log "Downloading the official install-softmbe.sh..."
+    curl -fSL "${SOFTMBE_URL}" -o "${softmbe_dir}/install-softmbe.sh"
+    chmod +x "${softmbe_dir}/install-softmbe.sh"
+    log "Running install-softmbe.sh (this compiles mbelib + codecserver-softmbe)..."
+    ( cd "${softmbe_dir}" && bash ./install-softmbe.sh )
+    rm -rf "${softmbe_dir}"
+
+    # the script adds a [device:softmbe] section but does not restart the service
+    systemctl restart codecserver 2>/dev/null || true
+fi
+
 # ---- 6. enable the service --------------------------------------------------
 log "Enabling and starting OpenWebRX..."
 systemctl enable --now openwebrx
@@ -212,3 +310,16 @@ else
 fi
 echo "    Set the receiver location (for Slack distance/azimuth) under:"
 echo "    Settings -> General settings -> Receiver location"
+
+# ---- feature report ---------------------------------------------------------
+if [ -x "${here}/check-features.sh" ]; then
+    echo
+    log "Feature availability on this box:"
+    # give codecserver/services a moment to come up before probing
+    sleep 2
+    "${here}/check-features.sh" || warn "feature check could not run (is openwebrx installed?)"
+    if [ -n "${AMBE_DEVICE}" ] || [ "${WITH_SOFTMBE}" -eq 1 ]; then
+        echo "    If the AMBE row shows '--', check:  systemctl status codecserver"
+        [ -n "${AMBE_DEVICE}" ] && echo "    (and verify the dongle is present at ${AMBE_DEVICE})"
+    fi
+fi
