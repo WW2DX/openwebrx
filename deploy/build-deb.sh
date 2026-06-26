@@ -37,6 +37,11 @@ sudo apt-get install -y --no-install-recommends \
     python3-setuptools
 
 echo "==> Building package..."
+# Skip the unit test suite during the build: it imports pycsdr (from the
+# runtime dependency python3-csdr), which is not a build dependency and is not
+# present on a plain build host. nocheck is the standard Debian way to skip
+# dh_auto_test; it does not affect the resulting package.
+export DEB_BUILD_OPTIONS="nocheck${DEB_BUILD_OPTIONS:+ ${DEB_BUILD_OPTIONS}}"
 # -us -uc: don't sign; -b: binary-only (no source tarball needed)
 dpkg-buildpackage -us -uc -b
 
