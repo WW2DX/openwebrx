@@ -14,6 +14,12 @@
 #
 set -euo pipefail
 
+# Run from a neutral directory: OpenWebRX's classic config loader picks up a
+# ./config_webrx.py from the current dir, and if we are launched from a checkout
+# the openwebrx service user cannot read it (it lives under a user home). From
+# /tmp it falls back to /etc/openwebrx + settings.json, like the real service.
+cd /tmp
+
 read -r -d '' PYCODE <<'PY' || true
 from owrx.config.core import CoreConfig
 CoreConfig.load()
