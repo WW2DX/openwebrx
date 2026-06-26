@@ -5,10 +5,64 @@ from owrx.reporting import ReportingEngine
 from owrx.lookup import MmsiNumber
 from datetime import datetime, timezone
 from csdr.module import PickleModule
+from logging.handlers import TimedRotatingFileHandler
 import re
+import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+# file that decoded APRS packets are appended to (one JSON object per line).
+# rotated weekly (on Mondays), keeping a few weeks of history.
+aprsLogFile = "/tmp/aprs_decodes.log"
+aprsLogRotateWeeks = 8
+
+# dedicated logger used purely to persist decoded packets to disk. it has its
+# own rotating handler and does not propagate to the root logger so the JSON
+# lines never leak into the normal application log.
+_decodeLogger = None
+
+
+def _getDecodeLogger():
+    global _decodeLogger
+    if _decodeLogger is None:
+        log = logging.getLogger("owrx.aprs.decodes")
+        log.setLevel(logging.INFO)
+        log.propagate = False
+        if not log.handlers:
+            try:
+                # when="W0" -> rotate weekly on Monday; backupCount weeks kept.
+                handler = TimedRotatingFileHandler(
+                    aprsLogFile, when="W0", interval=1, backupCount=aprsLogRotateWeeks
+                )
+                handler.setFormatter(logging.Formatter("%(message)s"))
+                log.addHandler(handler)
+            except Exception:
+                logger.exception("could not set up APRS decode log at %s", aprsLogFile)
+        _decodeLogger = log
+    return _decodeLogger
+
+
+def writeAprsDecode(aprsData):
+    """Append a decoded APRS packet to aprsLogFile as a single JSON line.
+
+    The underlying file is rotated weekly. Any failure here is logged and
+    swallowed so that file/IO problems can never interrupt the decoding
+    pipeline.
+    """
+    try:
+        # bytes (e.g. raw frame data) are not JSON serializable; fall back to
+        # a hex/utf-8 representation rather than failing the whole write.
+        def default(o):
+            if isinstance(o, (bytes, bytearray)):
+                return o.decode(encoding, "replace")
+            return str(o)
+
+        record = dict(aprsData)
+        record["decodeTime"] = datetime.now(timezone.utc).isoformat()
+        _getDecodeLogger().info(json.dumps(record, default=default))
+    except Exception:
+        logger.exception("could not write APRS decode to %s", aprsLogFile)
 
 
 # speed is in knots... convert to metric (km/h)
@@ -199,6 +253,7 @@ class AprsParser(PickleModule):
                 aprsData["freq"] = self.freq
 
             logger.debug("decoded APRS data: %s", aprsData)
+            writeAprsDecode(aprsData)
             AprsParser.updateMap(aprsData, self.band)
             self.getMetric("total").inc()
             if self.isDirect(aprsData):

@@ -416,6 +416,13 @@ defaultConfig = PropertyLayer(
     mqtt_enabled=False,
     mqtt_host="localhost",
     mqtt_use_ssl=False,
+    slack_enabled=False,
+    slack_webhook_url="",
+    # label prepended to every Slack message; falls back to the machine hostname when blank
+    slack_station_name="",
+    # empty mode/band lists mean "send all modes" / "send all bands"
+    slack_modes=[],
+    slack_bands=[],
     paging_filter=True,
     paging_charset="US",
     eibi_bookmarks_range=0,

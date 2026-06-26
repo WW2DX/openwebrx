@@ -1,4 +1,7 @@
 **1.2.117**
+- Added Slack webhook reporter for decoded spots, with per-mode and per-band filtering.
+- Added station name (defaults to hostname), distance, azimuth and grid to Slack spot messages.
+- Added logging of decoded APRS packets to /tmp/aprs_decodes.log, rotated weekly.
 - Added unencrypted Tetra support [Yiannis Sam].
 - Added support for ELAD FDM-S2 [DisagioDigitale].
 - Added ARINC622 payload parsing inside ACARS.

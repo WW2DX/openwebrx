@@ -386,3 +386,18 @@ Note: if you experience audio underruns while CPU usage is 100%, you can:
 # in addition to these settings also make sure that receiver_gps contains your correct location
 #wsprnet_enabled = False
 #wsprnet_callsign = "N0CALL"
+
+# === Slack webhook settings ===
+# enable this to post decoded spots to a Slack channel via an incoming webhook
+#slack_enabled = False
+# the incoming webhook URL created in your Slack workspace
+#slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+# label prepended to every message to identify this receiver when several
+# listeners report to the same channel; leave empty to use the machine hostname
+#slack_station_name = ""
+# optional filters: only send these modes / bands (empty lists send everything)
+# modes use the decoder spot names (e.g. "APRS", "AIS", "FT8"); bands use bandplan names (e.g. "2m")
+#slack_modes = []
+#slack_bands = []
+# distances and azimuths in the messages use the receiver_gps setting from above,
+# so make sure it contains your correct location
