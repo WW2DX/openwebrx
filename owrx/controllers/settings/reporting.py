@@ -2,10 +2,12 @@ from owrx.controllers.settings import SettingsFormController, SettingsBreadcrumb
 from owrx.form.section import Section
 from owrx.form.input.converter import OptionalConverter, IntConverter, TextConverter
 from owrx.form.input.aprs import AprsBeaconSymbols, AprsAntennaDirections
-from owrx.form.input import TextInput, CheckboxInput, DropdownInput, NumberInput, PasswordInput, Option
+from owrx.form.input import TextInput, CheckboxInput, DropdownInput, NumberInput, PasswordInput, MultiCheckboxInput, Option
 from owrx.form.input.validator import AddressAndOptionalPortValidator
 from owrx.breadcrumb import Breadcrumb, BreadcrumbItem
 from owrx.rigcontrol import RigControl
+from owrx.reporting.slack import SLACK_SPOTTABLE_MODES
+from owrx.bands import Bandplan
 
 class ReportingController(SettingsFormController):
     def getTitle(self):
@@ -13,6 +15,15 @@ class ReportingController(SettingsFormController):
 
     def get_breadcrumb(self) -> Breadcrumb:
         return SettingsBreadcrumb().append(BreadcrumbItem("Spotting and reporting", "settings/reporting"))
+
+    def _getBandOptions(self):
+        bandplan = Bandplan.getSharedInstance()
+        bandplan._refresh()
+        names = []
+        for band in bandplan.bands:
+            if band.getName() not in names:
+                names.append(band.getName())
+        return [Option(name, name) for name in names]
 
     def getSections(self):
         return [
@@ -134,6 +145,42 @@ class ReportingController(SettingsFormController):
                     "aisreporter_udp_ports",
                     "AIS UDP port(s)",
                     infotext="Comma separated list of AIS receiver UDP ports",
+                ),
+            ),
+            Section(
+                "Slack webhook settings",
+                CheckboxInput(
+                    "slack_enabled",
+                    "Enable sending decoded spots to a Slack channel",
+                ),
+                TextInput(
+                    "slack_webhook_url",
+                    "Slack webhook URL",
+                    infotext="Incoming webhook URL created in your Slack workspace "
+                    + "(https://hooks.slack.com/services/...). Decoded spots are posted to the channel "
+                    + "configured for this webhook.",
+                    converter=OptionalConverter(),
+                ),
+                TextInput(
+                    "slack_station_name",
+                    "Station name",
+                    infotext="Prepended to every Slack message to identify this receiver when several "
+                    + "OpenWebRX listeners report to the same channel. Leave blank to use the machine hostname.",
+                    converter=OptionalConverter(),
+                ),
+                MultiCheckboxInput(
+                    "slack_modes",
+                    "Modes to send",
+                    options=[Option(m, m) for m in SLACK_SPOTTABLE_MODES],
+                    infotext="Only spots in the selected modes are sent to Slack. "
+                    + "Leave all unchecked to send every mode.",
+                ),
+                MultiCheckboxInput(
+                    "slack_bands",
+                    "Bands to send",
+                    options=self._getBandOptions(),
+                    infotext="Only spots whose frequency falls within the selected bands are sent to Slack. "
+                    + "Leave all unchecked to send every band.",
                 ),
             ),
             Section(
