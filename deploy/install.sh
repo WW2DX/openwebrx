@@ -97,12 +97,22 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends curl ca-certificates gnupg
 
-# ---- 2. OpenWebRX+ apt repo -------------------------------------------------
-log "Enabling the OpenWebRX+ apt repository..."
+# ---- 2. apt repositories ----------------------------------------------------
+# OpenWebRX+ needs BOTH repos:
+#   - luarvique PPA: openwebrx(+), owrx-connector, python3-csdr, soapy modules
+#   - original repo.openwebrx.de: codecserver, digiham, libcodecserver-dev, ...
+log "Enabling the OpenWebRX+ apt repository (luarvique PPA)..."
 curl -fsSL https://luarvique.github.io/ppa/openwebrx-plus.gpg \
     | gpg --yes --dearmor -o /etc/apt/trusted.gpg.d/openwebrx-plus.gpg
 tee /etc/apt/sources.list.d/openwebrx-plus.list >/dev/null \
     <<<"deb [signed-by=/etc/apt/trusted.gpg.d/openwebrx-plus.gpg] https://luarvique.github.io/ppa/ubuntu ./"
+
+log "Enabling the original OpenWebRX apt repository (codecserver, digiham, ...)..."
+codename="$(. /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-jammy}")"
+curl -fsSL https://repo.openwebrx.de/openwebrx.gpg -o /usr/share/keyrings/openwebrx.gpg
+tee /etc/apt/sources.list.d/openwebrx.list >/dev/null \
+    <<<"deb [signed-by=/usr/share/keyrings/openwebrx.gpg] https://repo.openwebrx.de/ubuntu/ ${codename} main"
+
 apt-get update
 
 # ---- optional: preseed the web admin password -------------------------------
