@@ -11,6 +11,7 @@ from owrx.sdr import SdrService
 from owrx.form.input import TextInput, DropdownInput, Option
 from owrx.form.input.validator import RequiredValidator
 from owrx.property import PropertyLayer
+from owrx.profilepresets import ProfilePresets
 from owrx.breadcrumb import BreadcrumbMixin, Breadcrumb, BreadcrumbItem
 from owrx.log import HistoryHandler
 from abc import ABCMeta, abstractmethod
@@ -230,6 +231,9 @@ class SdrFormControllerWithModal(SdrFormController, metaclass=ABCMeta):
 
 
 class SdrDeviceController(SdrFormControllerWithModal):
+    # serialize preset additions against other config writes
+    lock = threading.Lock()
+
     def get_breadcrumb(self) -> Breadcrumb:
         return SdrDeviceBreadcrumb().append(
             BreadcrumbItem(self.device["name"], "settings/sdr/{}".format(self.device_id))
@@ -250,6 +254,38 @@ class SdrDeviceController(SdrFormControllerWithModal):
         return """
             <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal">Remove device...</button>
         """
+
+    def render_buttons(self):
+        return self.render_preset_control() + super().render_buttons()
+
+    def render_preset_control(self):
+        # dropdown of curated preset groups + a button to bulk-add them
+        options = "".join(
+            '<option value="{value}">{text}</option>'.format(value=html.escape(key), text=html.escape(label))
+            for key, label in ProfilePresets.getGroupOptions()
+        )
+        return """
+            <select class="form-control form-control-sm add-presets-select" style="width:auto;display:inline-block;margin-right:.5rem;">
+                {options}
+            </select>
+            <button type="button" class="btn btn-success add-presets">Add common profiles</button>
+        """.format(options=options)
+
+    def addPresetProfiles(self):
+        if self.device is None:
+            return self.send_response("device not found", code=404)
+        group = unquote(self.request.matches.group(2))
+        presets = ProfilePresets.getProfiles(group)
+        with SdrDeviceController.lock:
+            # skip presets whose name already exists on this device (idempotent)
+            existing = {p["name"] for p in self.device["profiles"].values()}
+            for preset in presets:
+                if preset["name"] in existing:
+                    continue
+                self.device["profiles"][str(uuid4())] = PropertyLayer(**preset)
+                existing.add(preset["name"])
+            Config.get().store()
+        return self.send_redirect("{}settings/sdr/{}".format(self.get_document_root(), quote(self.device_id)))
 
     def isDeviceActive(self) -> bool:
         return True

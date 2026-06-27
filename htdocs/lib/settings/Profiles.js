@@ -21,5 +21,12 @@ $.fn.profiles = function() {
             location.replace(document.URL.replace(/(\/sdr\/[^\/]+)\/profile\/([^\/]+)$/, '$1/moveprofiletodevice/$2/' + encodeURIComponent(target)));
             return false;
         });
+
+        $(this).on('click', '.add-presets', function(e) {
+            var group = $(this).closest('.buttons').find('.add-presets-select').val();
+            if (!group) return false;
+            location.replace(document.URL.replace(/(\/sdr\/[^\/]+)$/, '$1/addpresets/' + encodeURIComponent(group)));
+            return false;
+        });
     });
 }
