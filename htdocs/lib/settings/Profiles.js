@@ -14,5 +14,12 @@ $.fn.profiles = function() {
             location.replace(document.URL.replace(/(\/sdr\/[^\/]+)\/profile\/([^\/]+)$/, '$1/newprofile/$2'));
             return false;
         });
+
+        $(this).on('click', '.move-to-device', function(e) {
+            var target = $(this).closest('.buttons').find('.move-to-device-select').val();
+            if (!target) return false;
+            location.replace(document.URL.replace(/(\/sdr\/[^\/]+)\/profile\/([^\/]+)$/, '$1/moveprofiletodevice/$2/' + encodeURIComponent(target)));
+            return false;
+        });
     });
 }
