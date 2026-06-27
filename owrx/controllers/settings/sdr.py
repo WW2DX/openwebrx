@@ -16,6 +16,7 @@ from owrx.log import HistoryHandler
 from abc import ABCMeta, abstractmethod
 from uuid import uuid4
 
+import html
 import threading
 
 
@@ -405,7 +406,32 @@ class SdrProfileController(SdrFormControllerWithModal):
             <button type="button" class="btn btn-success move-up">Move up</button>
             <button type="button" class="btn btn-success move-down">Move down</button>
             <button type="button" class="btn btn-success clone">Clone</button>
-        """
+        """ + self.render_move_to_device()
+
+    def render_move_to_device(self):
+        # Offer to move this profile to another device, when at least one other
+        # device exists. Only shown for an already-saved profile.
+        if self.device is None or self.profile_id is None:
+            return ""
+        if self.profile_id not in self.device["profiles"]:
+            return ""
+        others = [
+            (device_id, device["name"])
+            for device_id, device in Config.get()["sdrs"].items()
+            if device_id != self.device_id
+        ]
+        if not others:
+            return ""
+        options = "".join(
+            '<option value="{value}">{text}</option>'.format(value=html.escape(device_id), text=html.escape(name))
+            for device_id, name in others
+        )
+        return """
+            <select class="form-control form-control-sm move-to-device-select" style="width:auto;display:inline-block;margin-left:.5rem;">
+                {options}
+            </select>
+            <button type="button" class="btn btn-success move-to-device">Move to device</button>
+        """.format(options=options)
 
     def render_remove_button(self):
         return """
@@ -457,6 +483,31 @@ class SdrProfileController(SdrFormControllerWithModal):
                     self.device["profiles"][id] = profile
                 Config.get().store()
         return self.send_redirect("{}settings/sdr/{}/profile/{}".format(self.get_document_root(), quote(self.device_id), quote(self.profile_id)))
+
+    def moveProfileToDevice(self):
+        if self.profile_id is None:
+            return self.send_response("profile not found", code=404)
+        target_id = unquote(self.request.matches.group(3))
+        sdrs = Config.get()["sdrs"]
+        # Move only to a different, existing device; otherwise stay put.
+        if target_id in sdrs and target_id != self.device_id:
+            # Prevent multiple requests from messing things up
+            with self.lock:
+                profile = self.device["profiles"][self.profile_id]
+                sdrs[target_id]["profiles"][self.profile_id] = profile
+                del self.device["profiles"][self.profile_id]
+                Config.get().store()
+            # follow the profile to its new device
+            return self.send_redirect(
+                "{}settings/sdr/{}/profile/{}".format(
+                    self.get_document_root(), quote(target_id), quote(self.profile_id)
+                )
+            )
+        return self.send_redirect(
+            "{}settings/sdr/{}/profile/{}".format(
+                self.get_document_root(), quote(self.device_id), quote(self.profile_id)
+            )
+        )
 
 
 class NewProfileController(SdrProfileController):
