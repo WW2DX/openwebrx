@@ -3,6 +3,27 @@
 This directory packages the fork as a Debian package and installs it on a fresh
 **Ubuntu 22.04** headless server (amd64 — e.g. an Intel Mac mini) in one shot.
 
+## Quick start: one file, one command
+
+Copy just `bootstrap.sh` to a fresh server and run it — it installs git, clones
+the fork, builds the `.deb`, and runs the full installer:
+
+```bash
+scp deploy/bootstrap.sh user@server:
+ssh user@server
+sudo bash bootstrap.sh --sdrplay --softmbe --admin-password 'choose-a-pass'
+```
+
+When it finishes, OpenWebRX is running at `http://<server-ip>:8073/`. Then in the
+web UI: Settings → SDR devices → add your dongle → **Add common profiles**; and
+set your receiver location + Slack webhook.
+
+`bootstrap.sh` flags: `--sdrplay`, `--softmbe` (or `--ambe-device DEV`),
+`--admin-password PASS`, `--repo URL`, `--branch NAME`. Note `--sdrplay` accepts
+SDRplay's EULA and `--softmbe` accepts the mbelib patent risk on your behalf
+(it's the unattended path); omit them and run `install.sh` interactively to be
+prompted. The sections below cover the individual steps `bootstrap.sh` automates.
+
 ## How it works
 
 The `openwebrx` package is `Architecture: all` (pure Python). It does **not**

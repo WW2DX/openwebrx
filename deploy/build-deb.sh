@@ -25,9 +25,17 @@ if [ ! -f debian/control ]; then
     exit 1
 fi
 
+# use sudo only when not already root (so this works both standalone and when
+# invoked as root by deploy/bootstrap.sh)
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+    command -v sudo >/dev/null || { echo "error: need root or sudo to install build deps" >&2; exit 1; }
+    SUDO="sudo"
+fi
+
 echo "==> Installing build dependencies..."
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends \
+${SUDO} apt-get update
+${SUDO} apt-get install -y --no-install-recommends \
     build-essential \
     fakeroot \
     dpkg-dev \
