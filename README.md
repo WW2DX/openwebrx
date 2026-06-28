@@ -1,3 +1,56 @@
+OpenWebRX+ (WW2DX fork)
+=======================
+
+This is the **WW2DX fork** of [OpenWebRX+](https://github.com/luarvique/openwebrx)
+(which is itself an enhanced fork of the original
+[OpenWebRX](https://github.com/jketterl/openwebrx) by Jakob Ketterl, DD5JFK).
+It tracks upstream OpenWebRX+ and adds decode→Slack reporting, APRS logging,
+SDR-profile conveniences, and turnkey deployment tooling for headless Ubuntu
+servers. Like its parents, it is licensed under **AGPLv3** (see [Licensing](#licensing)).
+
+## What's new in this fork
+
+### Reporting & logging
+- **Slack webhook reporter** — post decoded spots to a Slack channel via an
+  incoming webhook. Configure under **Settings → Spotting and reporting → Slack
+  webhook settings**:
+  - per-mode and per-band filtering (empty = send everything);
+  - a **station name** label prepended to every message (defaults to the machine
+    hostname) so several receivers can share one channel;
+  - **distance, azimuth and Maidenhead grid** added to each spot, computed from
+    the receiver location (works for lat/lon spots like APRS and for grid-locator
+    spots like FT8/WSPR);
+  - server/receiver status reports are never forwarded — only real decodes.
+- **APRS decode logging** — decoded APRS packets are appended to
+  `/tmp/aprs_decodes.log` as JSON lines, rotated weekly.
+
+### SDR profile management
+- **Move profiles between devices** — a "Move to device" control on the profile
+  settings page relocates a profile to another SDR device (no more editing
+  `settings.json` by hand).
+- **One-click common profiles** — an "Add common profiles" button on each device
+  bulk-creates a curated set of presets (Common VHF/UHF, HF bands, or All). See
+  `owrx/profilepresets.py`.
+
+### Deployment tooling (`deploy/`)
+- **One file, one command** to go from a fresh Ubuntu 22.04 server to a fully
+  running receiver — installs git, clones this fork, builds the `.deb`, enables
+  both apt repos, installs all native dependencies, sets up RTL-SDR, and
+  optionally the SDRplay API and software digital voice:
+  ```bash
+  scp deploy/bootstrap.sh user@server:
+  ssh user@server
+  sudo bash bootstrap.sh --sdrplay --softmbe --seed-rtlsdr --admin-password 'choose-a-pass'
+  ```
+- **`--seed-rtlsdr`** pre-creates a NooElec NESDR SMArt v5 device populated with
+  the common VHF/UHF profiles, so a single-dongle box comes up with a waterfall
+  and zero UI clicks.
+- See **[deploy/README.md](deploy/README.md)** for the full build/install guide,
+  SDRplay and software-MBE (digital voice) options, and the feature-availability
+  check.
+
+---
+
 OpenWebRX+
 =========
 
@@ -53,7 +106,9 @@ It has the following features:
 
 ## Setup
 
-The following methods of setting up a receiver are currently available:
+For this fork on a fresh Ubuntu 22.04 server, use the deployment tooling in
+[deploy/](deploy/README.md) (one-command bootstrap). The upstream setup methods
+also apply:
 
 - Raspberry Pi SD card images
 - Debian repository
