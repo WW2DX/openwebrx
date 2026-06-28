@@ -1,7 +1,28 @@
+**WW2DX fork**
+
+Changes in this fork, on top of upstream OpenWebRX+ (newest first):
+
+- Added a one-file deployment bootstrap (`deploy/bootstrap.sh`): from a fresh
+  Ubuntu 22.04 server to a fully running receiver in one command (clones, builds
+  the .deb, enables both apt repos, installs all dependencies, RTL-SDR, optional
+  SDRplay API and software digital voice, systemd service and admin user).
+- Added `--seed-rtlsdr`: pre-create a NooElec NESDR SMArt v5 device populated
+  with the common VHF/UHF profiles so a single-dongle box comes up with a
+  waterfall (`deploy/seed-rtlsdr.sh`).
+- Added one-click "common profiles" presets on the SDR device page (curated
+  VHF/UHF and HF band sets; `owrx/profilepresets.py`).
+- Added a "Move to device" action to relocate a profile between SDR devices.
+- Added software digital voice (mbelib) and hardware AMBE setup to the installer,
+  plus a feature-availability check (`deploy/install.sh`, `deploy/check-features.sh`).
+- Added a Slack webhook reporter for decoded spots, with per-mode and per-band
+  filtering, a station-name label (defaults to hostname), distance/azimuth/grid
+  in each message, and suppression of non-decode status reports.
+- Added logging of decoded APRS packets to `/tmp/aprs_decodes.log` (JSON lines,
+  rotated weekly).
+
+---
+
 **1.2.117**
-- Added Slack webhook reporter for decoded spots, with per-mode and per-band filtering.
-- Added station name (defaults to hostname), distance, azimuth and grid to Slack spot messages.
-- Added logging of decoded APRS packets to /tmp/aprs_decodes.log, rotated weekly.
 - Added unencrypted Tetra support [Yiannis Sam].
 - Added support for ELAD FDM-S2 [DisagioDigitale].
 - Added ARINC622 payload parsing inside ACARS.
