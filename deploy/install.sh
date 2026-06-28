@@ -139,6 +139,14 @@ else
     apt-get install -y openwebrx
 fi
 
+# ---- 3b. Packet/APRS + AIS decoder dependencies -----------------------------
+# direwolf (software modem) + aprs-symbols are only Recommends of the package,
+# so install them explicitly to guarantee the Packet (APRS) and AIS decoders are
+# available - they're core to this fork (Slack reporting / APRS logging).
+log "Installing APRS/Packet + AIS decoder dependencies (direwolf, aprs-symbols)..."
+apt-get install -y direwolf aprs-symbols \
+    || warn "could not install direwolf/aprs-symbols; the Packet (APRS) decoder may be unavailable."
+
 # ---- 4. RTL-SDR -------------------------------------------------------------
 log "Configuring RTL-SDR (blacklisting the DVB kernel driver)..."
 cat >/etc/modprobe.d/blacklist-rtlsdr.conf <<'EOF'
