@@ -135,6 +135,16 @@ The filter envelope can be dragged at its ends and moved around to set the passb
 
 However, if you hold down the shift key, you can drag the center line (BFO) or the whole passband (PBS).
 
+## Source code (AGPL §13)
+
+This is a modified version of OpenWebRX. Per the AGPLv3, the complete
+corresponding source code for this fork — including all changes described above —
+is published at **https://github.com/WW2DX/openwebrx** and is offered to all
+users who interact with a receiver running it over the network.
+
+Maintained by **WW2DX**. Built on OpenWebRX+ by Marat Fayzullin and OpenWebRX by
+Jakob Ketterl (DD5JFK); all upstream copyrights and the AGPLv3 license are retained.
+
 ## Licensing
 
 OpenWebRX is available under Affero GPL v3 license
