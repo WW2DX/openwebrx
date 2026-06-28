@@ -17,6 +17,9 @@
 #   --softmbe                software digital voice (D-Star/DMR/YSF/NXDN via mbelib)
 #   --ambe-device DEV        hardware AMBE dongle instead of --softmbe (e.g. /dev/ttyUSB0)
 #   --ambe-baud BAUD         AMBE dongle baud rate (default 921600)
+#   --seed-rtlsdr            pre-create a default NESDR SMArt v5 (RTL-SDR) device
+#                            populated with the common VHF/UHF profiles, so a
+#                            single-dongle box comes up with a waterfall directly
 #   --admin-password PASS    create the web admin user 'admin' with this password
 #   --repo URL               git repo to build from (default the WW2DX fork)
 #   --branch NAME            git branch to build (default master)
@@ -33,6 +36,7 @@ REPO="${REPO:-https://github.com/WW2DX/openwebrx.git}"
 BRANCH="${BRANCH:-master}"
 SRC_DIR="${SRC_DIR:-/usr/local/src/openwebrx}"
 ADMIN_PASSWORD=""
+SEED_RTLSDR=0
 PASS_ARGS=()
 
 log()  { echo -e "\033[1;36m####\033[0m $*"; }
@@ -44,6 +48,7 @@ while [ $# -gt 0 ]; do
         --softmbe)        PASS_ARGS+=("--softmbe" "--accept-softmbe-patent-risk"); shift ;;
         --ambe-device)    PASS_ARGS+=("--ambe-device" "${2:?--ambe-device needs a value}"); shift 2 ;;
         --ambe-baud)      PASS_ARGS+=("--ambe-baud" "${2:?--ambe-baud needs a value}"); shift 2 ;;
+        --seed-rtlsdr)    SEED_RTLSDR=1; shift ;;
         --admin-password) ADMIN_PASSWORD="${2:?--admin-password needs a value}"; shift 2 ;;
         --repo)           REPO="${2:?--repo needs a value}"; shift 2 ;;
         --branch)         BRANCH="${2:?--branch needs a value}"; shift 2 ;;
@@ -86,6 +91,11 @@ if [ -n "${ADMIN_PASSWORD}" ]; then
     OWRX_ADMIN_PASSWORD="${ADMIN_PASSWORD}" bash deploy/install.sh --deb "${deb}" "${PASS_ARGS[@]}"
 else
     bash deploy/install.sh --deb "${deb}" "${PASS_ARGS[@]}"
+fi
+
+if [ "${SEED_RTLSDR}" -eq 1 ]; then
+    log "Seeding a default RTL-SDR (NESDR SMArt v5) device with common profiles..."
+    bash deploy/seed-rtlsdr.sh
 fi
 
 log "Bootstrap complete."
