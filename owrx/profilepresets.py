@@ -45,6 +45,9 @@ VHF_UHF = [
     P("Marine VHF", 157000, 156800, "nfm", "25000"),
     P("NWS Weather", 162450, 162550, "nfm", "25000"),
     P("Broadcast FM", 98000, 98000, "wfm", "100000"),
+    P("433 MHz ISM", 433920, 433920, "nfm", "25000"),
+    P("Meshtastic 433 (EU)", 433875, 433875, "nfm", "25000"),
+    P("Meshtastic 915 (US)", 906875, 906875, "nfm", "25000"),
     P("1090 MHz ADS-B", 1090000, 1090000, "nfm", "25000"),
 ]
 
@@ -109,8 +112,7 @@ UTILITY = [
     P("Railroad (AAR)", 160500, 161100, "nfm", "15000"),
     P("Pagers (POCSAG/FLEX)", 930000, 929000, "nfm", "12500"),
     P("70cm Repeaters", 438800, 439275, "nfm", "12500"),
-    # ISM (rtl_433: weather sensors, TPMS, remotes, ...)
-    P("433 MHz ISM", 433920, 433920, "nfm", "25000"),
+    # ISM (rtl_433: weather sensors, TPMS, remotes, ...); 433 MHz is in the VHF/UHF group
     P("315 MHz ISM (US)", 315000, 315000, "nfm", "25000"),
     P("915 MHz ISM (US)", 915000, 915000, "nfm", "25000"),
 ]
